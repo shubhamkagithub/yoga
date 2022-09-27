@@ -1,0 +1,2221 @@
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: helm-toolkit
+data:
+  chart_name: helm-toolkit
+  release: helm-toolkit
+  namespace: helm-toolkit
+  values: {}
+  source:
+    type: local
+    location: /tmp/openstack-helm-infra
+    subpath: helm-toolkit
+    reference: master
+  dependencies: []
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: openstack-ingress-controller
+data:
+  chart_name: openstack-ingress-controller
+  release: openstack-ingress-controller
+  namespace: openstack
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-openstack-ingress-controller
+    resources:
+      - type: deployment
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            release_group: osh-openstack-ingress-controller
+  values:
+    images:
+      tags:
+        entrypoint: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        ingress: docker.itera.io/kubernetes-ingress-controller/nginx-ingress-controller:0.32.0
+        ingress_module_init: docker.io/openstackhelm/neutron:yoga-ubuntu_focal
+        ingress_routed_vip: docker.io/openstackhelm/neutron:yoga-ubuntu_focal
+        error_pages: docker.itera.io/google_containers/defaultbackend:1.4
+        keepalived: docker.itera.io/osixia/keepalived:1.4.5
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        image_repo_sync: docker.itera.io/docker:17.07.0
+    release_uuid: ${RELEASE_UUID}
+    labels:
+      server:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      error_server:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+    pod:
+      replicas:
+        error_page: 2
+        ingress: 2
+  source:
+    type: local
+    location: /tmp/openstack-helm-infra
+    subpath: ingress
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: openstack-ceph-config
+data:
+  chart_name: openstack-ceph-config
+  release: openstack-ceph-config
+  namespace: openstack
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-openstack-ceph-config
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            release_group: osh-openstack-ceph-config
+  values:
+    images:
+      pull_policy: Always
+      tags:
+        ceph_bootstrap: docker.itera.io/ceph/daemon:ubuntu_bionic-20200521
+        ceph_cephfs_provisioner: docker.itera.io/external_storage/cephfs-provisioner:ubuntu_bionic-20200521
+        ceph_config_helper: docker.itera.io/port/ceph-config-helper:ubuntu_bionic-20200521
+        ceph_rbd_provisioner: docker.itera.io/external_storage/rbd-provisioner:ubuntu_bionic-20200521
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v0.3.1
+        image_repo_sync: docker.itera.io/docker:17.07.0
+    labels:
+      jobs:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+    endpoints:
+      identity:
+        namespace: openstack
+      object_store:
+        namespace: ceph
+      ceph_mon:
+        namespace: ceph
+    network:
+      public: 192.168.0.0/24
+      cluster: 192.168.0.0/24
+    deployment:
+      ceph: false
+      rbd_provisioner: false
+      cephfs_provisioner: false
+      client_secrets: true
+      rgw_keystone_user_and_endpoints: false
+    storageclass:
+      cephfs:
+        provision_storage_class: False
+    bootstrap:
+      enabled: false
+    conf:
+      rgw_ks:
+        enabled: true
+      ceph:
+        global:
+          mon_host: ceph-mon.ceph.svc.cluster.local
+  source:
+    type: local
+    location: /tmp/openstack-helm-infra
+    subpath: ceph-provisioners
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: mariadb
+data:
+  chart_name: mariadb
+  release: mariadb
+  namespace: openstack
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-mariadb
+    resources:
+      - type: statefulset
+      - type: job
+    native:
+      enabled: false
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            release_group: osh-mariadb
+  values:
+    images:
+      tags:
+        mariadb: docker.itera.io/openstackhelm/mariadb:ubuntu_xenial-20200303
+        ingress: quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.9.0 
+        error_pages: docker.itera.io/google_containers/defaultbackend:1.4
+        prometheus_create_mysql_user: docker.itera.io/mariadb:10.2.31
+        prometheus_mysql_exporter: docker.itera.io/prom/mysqld-exporter:v0.11.0
+        prometheus_mysql_exporter_helm_tests: docker.itera.io/openstackhelm/heat:newton-ubuntu_xenial
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        image_repo_sync: docker.itera.io/docker:17.07.0
+        mariadb_backup: docker.itera.io/stackanetes/porthole-mysqlclient-utility:latest-ubuntu_bionic
+        ks_user: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        scripted_test: docker.itera.io/openstackhelm/mariadb:ubuntu_xenial-20191031
+    endpoints:
+      oslo_db:
+        auth:
+          admin:
+            password: hQrCbbmZQqGJbfedePek
+          exporter:
+            password: c3Gilft2iZggY9ms8WE0
+          sst:
+            password: iN1Nqz23qebDHsmMNVIW
+    monitoring:
+      prometheus:
+        enabled: True
+    labels:
+      server:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      prometheus_mysql_exporter:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+  source:
+    type: local
+    location: /tmp/openstack-helm-infra
+    subpath: mariadb
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: memcached
+data:
+  chart_name: memcached
+  release: memcached
+  namespace: openstack
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-memcached
+    resources:
+      - type: deployment
+    native:
+      enabled: false
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            release_group: osh-memcached
+  values:
+    images:
+      pull_policy: Always
+      tags:
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        memcached: docker.itera.io/memcached:1.5.5
+        prometheus_memcached_exporter: docker.itera.io/prom/memcached-exporter:v0.4.1
+        image_repo_sync: docker.itera.io/docker:17.07.0
+    labels:
+      server:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      prometheus_memcached_exporter:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+    monitoring:
+      prometheus:
+        enabled: true
+  source:
+    type: local
+    location: /tmp/openstack-helm-infra
+    subpath: memcached
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: rabbitmq
+data:
+  chart_name: rabbitmq
+  release: rabbitmq
+  namespace: openstack
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-rabbitmq
+    resources:
+      - type: statefulset
+      - type: job
+    native:
+      enabled: false
+  test:
+    enabled: False
+    timeout: 600
+  install:
+    no_hooks: False
+  upgrade:
+    options:
+      force: true
+      recreate_pods: true
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            release_group: osh-rabbitmq
+        - type: pod
+          labels:
+            release_group: osh-rabbitmq
+            component: test
+  values:
+    images:
+      tags:
+        prometheus_rabbitmq_exporter: docker.itera.io/kbudde/rabbitmq-exporter:v0.21.0
+        prometheus_rabbitmq_exporter_helm_tests: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        rabbitmq_init: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        rabbitmq: docker.itera.io/rabbitmq:3.7.26
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        scripted_test: docker.itera.io/rabbitmq:3.7.26-management
+        image_repo_sync: docker.itera.io/docker:17.07.0
+    pod:
+      replicas:
+        server: 3
+        prometheus_rabbitmq_exporter: 1
+    endpoints:
+      oslo_messaging:
+        auth:
+          user:
+            username: rabbitmq-admin
+            password: 5mOMtMEnkx4TxTwEMGqY
+    monitoring:
+      prometheus:
+        enabled: True
+    labels:
+      server:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      prometheus_rabbitmq_exporter:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+  source:
+    type: local
+    location: /tmp/openstack-helm-infra
+    subpath: rabbitmq
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: keystone
+data:
+  chart_name: keystone
+  release: keystone
+  namespace: openstack
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-keystone
+    resources:
+      - type: deployment
+      - type: job
+    native:
+      enabled: false
+  test:
+    enabled: False
+    timeout: 600
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            release_group: osh-keystone
+        - type: pod
+          labels:
+            release_group: osh-keystone
+            component: test
+  values:
+    network:
+      api:
+        node_port:
+          enabled: true 
+    images:
+      tags:
+        bootstrap: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        test: docker.itera.io/xrally/xrally-openstack:2.0.0
+        db_init: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        keystone_db_sync: docker.io/openstackhelm/keystone:yoga-ubuntu_focal
+        db_drop: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        ks_user: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        rabbit_init: docker.itera.io/rabbitmq:3.7-management
+        keystone_fernet_setup: docker.io/openstackhelm/keystone:yoga-ubuntu_focal
+        keystone_credential_setup: docker.io/openstackhelm/keystone:yoga-ubuntu_focal
+        keystone_credential_rotate: docker.io/openstackhelm/keystone:yoga-ubuntu_focal
+        keystone_api: docker.io/openstackhelm/keystone:yoga-ubuntu_focal
+        keystone_domain_manage: docker.io/openstackhelm/keystone:yoga-ubuntu_focal
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        image_repo_sync: docker.itera.io/docker:17.07.0
+    endpoints:
+      identity:
+        name: keystone
+        namespace: openstack
+        auth:
+          admin:
+            password: 24x8zPytDZH8wuSb
+          test:
+            password: JoYly5RYLdTgbXwu5NfD
+      oslo_cache:
+        auth:
+          memcache_secret_key: 4hvV8Q8ZBrQbguej4jwj
+      oslo_db:
+        auth:
+          admin:
+            password: hQrCbbmZQqGJbfedePek
+          keystone:
+            password: WYvPEnl6aZ0tQZwWbeVS
+      oslo_messaging:
+        auth:
+          admin:
+            username: rabbitmq-admin
+            password: 5mOMtMEnkx4TxTwEMGqY
+          keystone:
+            username: keystone-rabbitmq-user
+            password: xoSffj4Xl4HE0zx8aLx8
+        statefulset:
+          replicas: 3
+          name: osh-rabbitmq-rabbitmq
+    labels:
+      api:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      job:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+    pod:
+      replicas:
+        api: 3
+  source:
+    type: local
+    location: /tmp/openstack-helm
+    subpath: keystone
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: radosgw-openstack
+data:
+  chart_name: radosgw-openstack
+  release: radosgw-openstack
+  namespace: openstack
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-radosgw-openstack
+  test:
+    enabled: False
+    timeout: 600
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            release_group: osh-radosgw-openstack
+  values:
+    images:
+      pull_policy: Always
+      tags:
+        ceph_bootstrap: docker.itera.io/ceph/daemon:ubuntu_bionic-20200521
+        ceph_config_helper: docker.itera.io/port/ceph-config-helper:ubuntu_bionic-20200521
+        ceph_rgw: docker.itera.io/ceph/daemon:ubuntu_bionic-20200521
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        image_repo_sync: docker.itera.io/docker:17.07.0
+        rgw_s3_admin: docker.itera.io/port/ceph-config-helper:ubuntu_bionic-20200521
+        ks_endpoints: docker.itera.io/openstackhelm/heat:newton-ubuntu_xenial
+        ks_service: docker.itera.io/openstackhelm/heat:newton-ubuntu_xenial
+        ks_user: docker.itera.io/openstackhelm/heat:newton-ubuntu_xenial
+    endpoints:
+      identity:
+        namespace: openstack
+        auth:
+          admin:
+            password: 24x8zPytDZH8wuSb
+          swift:
+            password: McAHRVoKD0mNEq4uOCUy
+          object_store:
+            namespace: openstack
+          ceph_mon:
+            namespace: ceph
+      object_store:
+        namespace: openstack
+      ceph_mon:
+        namespace: ceph
+    labels:
+      job:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+    bootstrap:
+      enabled: False
+    conf:
+      rgw_ks:
+        enabled: True
+    network:
+      public: 192.168.0.0/24
+      cluster: 192.168.0.0/24
+    deployment:
+      ceph: True
+      rbd_provisioner: False
+      cephfs_provisioner: False
+      client_secrets: False
+  source:
+    type: local
+    location: /tmp/openstack-helm-infra
+    subpath: ceph-rgw
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: glance
+data:
+  chart_name: glance
+  release: glance
+  namespace: openstack
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-glance
+    resources:
+      - type: deployment
+      - type: job
+    native:
+      enabled: false
+  test:
+    enabled: False
+    timeout: 600
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            release_group: osh-glance
+        - type: pod
+          labels:
+            release_group: osh-glance
+            component: test
+  values:
+    network:
+      api:
+        node_port:
+          enabled: true 
+    images:
+      tags:
+        test: docker.itera.io/xrally/xrally-openstack:2.0.0
+        glance_storage_init: docker.itera.io/port/ceph-config-helper:ubuntu_bionic-20200521
+        glance_metadefs_load: docker.io/openstackhelm/glance:yoga-ubuntu_focal
+        db_init: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        glance_db_sync: docker.io/openstackhelm/glance:yoga-ubuntu_focal
+        db_drop: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        ks_user: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        ks_service: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        ks_endpoints: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        rabbit_init: docker.itera.io/rabbitmq:3.7-management
+        glance_api: docker.io/openstackhelm/glance:yoga-ubuntu_focal
+        glance_registry: docker.io/openstackhelm/glance:yoga-ubuntu_focal
+        # Bootstrap image requires curl
+        bootstrap: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        image_repo_sync: docker.itera.io/docker:17.07.0
+      pull_policy: Always
+    endpoints:
+      identity:
+        auth:
+          admin:
+            password: 24x8zPytDZH8wuSb
+          glance:
+            password: 6ohpeyIbd95tqZyZD0Dz
+          test:
+            password: Kiz2K4elg3OygKtyU5QC
+      oslo_db:
+        auth:
+          admin:
+            password: hQrCbbmZQqGJbfedePek
+          glance:
+            password: YKY6KzpD7Y2166e7reTU
+      oslo_cache:
+        auth:
+          memcache_secret_key: 4hvV8Q8ZBrQbguej4jwj
+      oslo_messaging:
+        auth:
+          admin:
+            username: rabbitmq-admin
+            password: 5mOMtMEnkx4TxTwEMGqY
+          glance:
+            username: glance-rabbitmq-user
+            password: NnCTmrCu0kZNQDyR3V9j
+        statefulset:
+          replicas: 3
+          name: osh-rabbitmq-rabbitmq
+    labels:
+      api:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      job:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      registry:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+    pod:
+      replicas:
+        api: 3
+        registry: 2
+    # NOTE(portdirect): glance APIv1 is required for heat in Newton
+    conf:
+      glance:
+        DEFAULT:
+          enable_v1_api: true
+          show_multiple_locations: True
+        glance_store:
+          store: "file,http,swift,cinder"
+  source:
+    type: local
+    location: /tmp/openstack-helm
+    subpath: glance
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: cinder
+data:
+  chart_name: cinder
+  release: cinder
+  namespace: openstack
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-cinder
+    resources:
+      - type: deployment
+      - type: job
+    native:
+      enabled: false
+  test:
+    enabled: False
+    timeout: 600
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            release_group: osh-cinder
+        - type: pod
+          labels:
+            release_group: osh-cinder
+            component: test
+  values:
+    network:
+      api:
+        node_port:
+          enabled: true 
+    images:
+      tags:
+        test: docker.itera.io/xrally/xrally-openstack:2.0.0
+        db_init: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        cinder_db_sync: docker.io/openstackhelm/cinder:yoga-ubuntu_focal
+        db_drop: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        rabbit_init: docker.itera.io/rabbitmq:3.7-management
+        ks_user: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        ks_service: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        ks_endpoints: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        cinder_api: docker.io/openstackhelm/cinder:yoga-ubuntu_focal
+        bootstrap: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        cinder_scheduler: docker.io/openstackhelm/cinder:yoga-ubuntu_focal
+        cinder_volume: docker.io/openstackhelm/cinder:yoga-ubuntu_focal
+        cinder_volume_usage_audit: docker.io/openstackhelm/cinder:yoga-ubuntu_focal
+        cinder_storage_init: docker.itera.io/port/ceph-config-helper:ubuntu_bionic-20200521
+        cinder_backup: docker.io/openstackhelm/cinder:yoga-ubuntu_focal
+        cinder_backup_storage_init: docker.itera.io/port/ceph-config-helper:ubuntu_bionic-20200521 
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        image_repo_sync: docker.itera.io/docker:17.07.0
+      pull_policy: Always
+    endpoints:
+      identity:
+        auth:
+          admin:
+            password: 24x8zPytDZH8wuSb
+          cinder:
+            password: qeVjCl9B8L1wYq2XKpHU
+          test:
+            password: IJs62S58PaATlk6mT3qX
+      oslo_db:
+        auth:
+          admin:
+            password: hQrCbbmZQqGJbfedePek
+          cinder:
+            password: eubpcCze7RgwgdTKKCyi
+      oslo_cache:
+        auth:
+          memcache_secret_key: 4hvV8Q8ZBrQbguej4jwj
+      oslo_messaging:
+        auth:
+          admin:
+            username: rabbitmq-admin
+            password: 5mOMtMEnkx4TxTwEMGqY
+          cinder:
+            username: cinder-rabbitmq-user
+            password: RozRtjh9g5WjW3htUXGa
+        statefulset:
+          replicas: 3
+          name: osh-rabbitmq-rabbitmq
+    labels:
+      api:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      backup:
+        node_selector_key: openstack-compute-node
+        node_selector_value: enabled
+      job:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      scheduler:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      volume:
+        node_selector_key: openstack-compute-node
+        node_selector_value: enabled
+    pod:
+      replicas:
+        api: 3
+        volume: 1
+        scheduler: 1
+        backup: 1
+    conf:
+      cinder:
+        DEFAULT:
+          debug: true
+          verbose: true
+    conf:
+      cinder:
+        nova:
+          auth_type: password
+          auth_url: http://keystone-api.openstack.svc.cluster.local:5000/v3
+          auth_version: v3
+          password: qeVjCl9B8L1wYq2XKpHU
+          project_domain_name: service
+          project_name: service
+          region_name: RegionOne
+          user_domain_name: service
+          username: cinder      
+  source:
+    type: local
+    location: /tmp/openstack-helm
+    subpath: cinder
+    refere: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: openvswitch
+data:
+  chart_name: openvswitch
+  release: openvswitch
+  namespace: openstack
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-openvswitch
+    resources:
+      - type: daemonset
+        min_ready: 1
+    native:
+      enabled: false
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            release_group: osh-openvswitch
+  values:
+    images:
+      tags:
+        openvswitch_db_server: docker.itera.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
+        openvswitch_vswitchd: docker.itera.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        image_repo_sync: docker.itera.io/docker:17.07.0
+    labels:
+      ovs:
+        node_selector_key: openvswitch
+        node_selector_value: enabled
+  source:
+    type: local
+    location: /tmp/openstack-helm-infra
+    subpath: openvswitch
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: libvirt
+data:
+  chart_name: libvirt
+  release: libvirt
+  namespace: openstack
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-libvirt
+    resources:
+      - type: daemonset
+    native:
+      enabled: false
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+  values:
+    images:
+      tags:
+        #libvirt: docker.io/hemsonawane/ubuntu-libvirt:victoria
+        libvirt: docker.itera.io/kolla/ubuntu-binary-nova-libvirt:ussuri-updated
+        #libvirt: docker.itera.io/kolla/ubuntu-binary-nova-libvirt:ussuri
+#docker.itera.io/openstackhelm/libvirt:latest-ubuntu_bionic
+        ceph_config_helper: docker.itera.io/port/ceph-config-helper:ubuntu_bionic-20200521 
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        image_repo_sync: docker.itera.io/docker:17.07.0
+      pull_policy: Always
+    labels:
+      agent:
+        libvirt:
+          node_selector_key: openstack-compute-node
+          node_selector_value: enabled
+    conf:
+      libvirt:
+        listen_tcp: "1"
+        listen_tls: "0"
+        auth_tcp: "none"
+        ca_file: ""
+        listen_addr: "0.0.0.0"
+        log_level: "3"
+        log_outputs: "1:file:/var/log/libvirt/libvirtd.log"
+  source:
+    type: local
+    location: /tmp/openstack-helm-infra
+    subpath: libvirt
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: nova
+data:
+  chart_name: nova
+  release: nova
+  namespace: openstack
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-nova
+    resources:
+      - type: deployment
+      - type: daemonset
+      - type: job
+    native:
+      enabled: false
+  test:
+    enabled: False
+    timeout: 900
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            application: nova
+            component: db-init
+        - type: job
+          labels:
+            application: nova
+            component: db-sync
+        - type: job
+          labels:
+            application: nova
+            component: ks-user
+        - type: job
+          labels:
+            application: nova
+            component: ks-service
+        - type: job
+          labels:
+            application: nova
+            component: ks-endpoints
+        - type: job
+          labels:
+            application: placement
+            component: ks-user
+        - type: job
+          labels:
+            application: placement
+            component: ks-service
+        - type: job
+          labels:
+            application: placement
+            component: ks-endpoints
+        - type: job
+          labels:
+            application: nova
+            component: cell-setup
+  values:
+    images:
+      tags:
+        bootstrap: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        db_drop: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        db_init: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        rabbit_init: docker.itera.io/rabbitmq:3.7-management
+        ks_user: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        ks_service: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        ks_endpoints: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        nova_api: docker.io/openstackhelm/nova:yoga-ubuntu_focal
+        nova_cell_setup: docker.io/openstackhelm/nova:yoga-ubuntu_focal
+        nova_cell_setup_init: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        #nova_compute: docker.itera.io/gitlab-image-build/nova:yoga-ubuntu_focal
+        nova_compute: docker.io/openstackhelm/nova:yoga-ubuntu_focal
+        #nova_compute: docker.io/lmercl/nova:ussuri-ubuntu_bionic-v1
+        nova_compute_ironic: 'docker.itera.io/kolla/ubuntu-source-nova-compute-ironic:ocata'
+        #nova_compute_ssh: docker.itera.io/gitlab-image-build/nova:yoga-ubuntu_focal
+        nova_compute_ssh: docker.io/openstackhelm/nova-ssh:latest-ubuntu_focal
+        nova_conductor: docker.io/openstackhelm/nova:yoga-ubuntu_focal
+        #nova_consoleauth: docker.itera.io/gitlab-image-build/nova:yoga-ubuntu_focal
+        nova_db_sync: docker.io/openstackhelm/nova:yoga-ubuntu_focal
+        nova_novncproxy: docker.io/openstackhelm/nova:yoga-ubuntu_focal
+        nova_novncproxy_assets: 'docker.itera.io/kolla/ubuntu-source-nova-novncproxy:ocata'
+        #nova_placement: docker.itera.io/gitlab-image-build/nova:yoga-ubuntu_focal
+        nova_scheduler: docker.io/openstackhelm/nova:yoga-ubuntu_focal
+        nova_service_cleaner: docker.itera.io/port/ceph-config-helper:ubuntu_bionic-20200521
+        nova_spiceproxy: docker.io/openstackhelm/nova:yoga-ubuntu_focal
+        nova_spiceproxy_assets: docker.io/openstackhelm/nova:yoga-ubuntu_focal
+        test: docker.itera.io/xrally/xrally-openstack:2.0.0
+        image_repo_sync: docker.itera.io/docker:17.07.0
+        nova_wait_for_computes_init: docker.itera.io/google_containers/hyperkube-amd64:v1.11.6
+    network:
+      osapi:
+        node_port:
+          enabled: true
+      novncproxy:
+        name: "nova-novncproxy"
+        node_port:
+          enabled: true
+          port: 30608
+        port: 6080
+        targetPort: 6080
+      ssh:
+        enabled: true
+        from_subnet: 0.0.0.0/0
+        private_key: |
+          -----BEGIN RSA PRIVATE KEY-----
+          MIIEpAIBAAKCAQEAyFgvDzfdG5rTGdXWW1IodKyRX8ee3n20B3PQaCjPZsSuBUdC
+          uGveIobxPW1B9oS4uUa161W5nVSlyHs3qoZCsdVbTS/XHZG73BPElrvoggdmew6u
+          EB9J2hy0Wbp4IESOfqgF65d2eZsmnFHAjjFZTAGnvHLzd8CNJovt4igRwPrK4bHK
+          oqZV2bWmXJ+Cc7INKVrDqgL2oHOtd3ZqLn6NwhMeSbX4NgF3ZaNxlSswkkIhE7FV
+          iWDvziNkIyMfx7elSiMyO/u3ETav3XC7Hs3H8q2VTd3uSoTE92+zEq4DO1051Sqh
+          pHm0LaVWYaAQchnC76voqT7lfL8+parw6gTzpQIDAQABAoIBAQC6i5nuAqdID+am
+          dL0utRZkZVbLp1UfeE6MbeNNSUqtN0+OLKdMj2v8HEg+WSCFiVlzcwrrQRwfCfV/
+          8nOHvZIWgkKMYZJcvxj8OA/iBr/da0SaKrYa3vdmNzobHozCBvPjrVIt5w9y9euC
+          vICeJgcuxY/I4gQfqlQD42EyJvs5AubsZ1KbaqIpQYeTYOo11N6Xwr7yE50C65tg
+          +27xwfeVP8zPLTs0Jz1kmHhScYDPMUkHGI5C7Hq0rECRH9loLQuxXVqOQgqnJUlZ
+          YXJ40KBdKW05IwKc7sdzLLTUdpDp81vvzJ155wnl5zXD3FI2UxEA9GfwHp5Az/QP
+          dxNugQoBAoGBAOMp85p7YXYwxFpuTwEWbKe2bB7wz1zr/Bkg7VdJt78nSqJcCCNU
+          NjKrdWF0OgfKbjlSdFml6963LauJ82gbwmJegG4xfvZmczlSOLvxmoEKhTnE/ZJX
+          IUWO7ao4bwffIDA/orgVrRfS4Dxt2Bx6UDo0EW+PKi6tU1KDIALUgwGBAoGBAOHG
+          sYB/8vcgxQaoLqkhkdjDJnYFCwuuMmzuPJacohXngJMwyduSVyUL19UOqh83iRi9
+          aOjlJRNMxWVx59K4zCdehyQgyUJ+RSdag5bxajp19VwdjRlrlg5PyQuyNLkiN+/G
+          Ypulz8dnxBmiFaWMtqm6PhJEtrqUcgfzfl7Fe7wlAoGAIt+U2zlnu+o+qpdWn5ce
+          tRyHOrTDUMOVnxHz/bt+buUMSyKPyUSrUVoLGhvqsLl99GTZIc4cCMPcSgJSkL/6
+          NnnFg6UrlY4i0ED0Hr43dunzi+vW9blUjUYk7EXfnbi+S0nppBMH0Kl57Sz7yVtp
+          p5XIu3SiCCppqTgiGO0g84ECgYAXYoEYEiiUOCywF9NdaUC19uCQ8MzIFO7cIYDd
+          CLQxGJ1UoYUG3Q1xpNxiEPbF7PaiPVwUY0eHzDfV3gpo5QMgQMY2k77EyFdZUCK5
+          C6A5Fean99eZfm84ZEMqlvanBkhM6XtlK7Ntr+27yfH8B6sTwVqUgdF7WczFzg6U
+          uleqkQKBgQCH1Co7BmI993wk2WmECCe/XSZYQOC3MtLHmvz2P0ecEUcmT9mwo979
+          tli5BazOJcbjzDIjXpVu7YdiFy9QolDeW6HNA1e0Kv5MneEnQq5OLg2deuUAwanR
+          WtQ1xz4+zh8yHSrOZKo0Gce/1a+eGU2UawBUugtVPPSw9Yyv5zRGIw==
+          -----END RSA PRIVATE KEY-----
+        public_key: |
+          ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDIWC8PN90bmtMZ1dZbUih0rJFfx57efbQHc9BoKM9mxK4FR0K4a94ihvE9bUH2hLi5RrXrVbmdVKXIezeqhkKx1VtNL9cdkbvcE8SWu+iCB2Z7Dq4QH0naHLRZunggRI5+qAXrl3Z5myacUcCOMVlMAae8cvN3wI0mi+3iKBHA+srhscqiplXZtaZcn4Jzsg0pWsOqAvagc613dmoufo3CEx5Jtfg2AXdlo3GVKzCSQiETsVWJYO/OI2QjIx/Ht6VKIzI7+7cRNq/dcLsezcfyrZVN3e5KhMT3b7MSrgM7XTnVKqGkebQtpVZhoBByGcLvq+ipPuV8vz6lqvDqBPOl chnyda@chnydas-MacBook-Pro.local
+    endpoints:
+      identity:
+        name: keystone
+        auth:
+          admin:
+            password: 24x8zPytDZH8wuSb
+          nova:
+            password: S2gQorl5qVc4FIWi8FbH
+          neutron:
+            password: fPSHADhcaRfhyWOepXqc
+          placement:
+            username: placement
+            password: SF3L4KakWlbj1naAjwTz
+          test:
+            password: l42jQhmAUSO8BBZnshgM
+      oslo_db:
+        auth:
+          admin:
+            password: hQrCbbmZQqGJbfedePek
+          nova:
+            password: 8yPTwBDaTaQzUvxVSAqT
+      oslo_db_api:
+        auth:
+          admin:
+            password: hQrCbbmZQqGJbfedePek
+          nova:
+            password: 8yPTwBDaTaQzUvxVSAqT
+      oslo_db_cell0:
+        auth:
+          admin:
+            password: hQrCbbmZQqGJbfedePek
+          nova:
+            password: 8yPTwBDaTaQzUvxVSAqT
+      oslo_cache:
+        auth:
+          memcache_secret_key: 4hvV8Q8ZBrQbguej4jwj
+      oslo_messaging:
+        auth:
+          admin:
+            username: rabbitmq-admin
+            password: 5mOMtMEnkx4TxTwEMGqY
+          nova:
+            username: nova-rabbitmq-user
+            password: 1CCSW0VWqn7OWYQu5r16
+        statefulset:
+          replicas: 3
+          name: osh-rabbitmq-rabbitmq
+    labels:
+      agent:
+        compute:
+          node_selector_key: openstack-compute-node
+          node_selector_value: enabled
+        compute_ironic:
+          node_selector_key: openstack-compute-node
+          node_selector_value: enabled
+      api_metadata:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      conductor:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+     # consoleauth:
+     #   node_selector_key: openstack-control-plane
+     #   node_selector_value: enabled
+      job:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      novncproxy:
+        node_selector_key: openstack-control-plane-vnc
+        node_selector_value: enabled
+      osapi:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+     # placement:
+     #   node_selector_key: openstack-control-plane
+     #   node_selector_value: enabled
+      scheduler:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      spiceproxy:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      test:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+    pod:
+      mounts:
+        nova_compute:
+          nova_compute:
+            volumeMounts:
+              - name: dev
+                mountPath: /dev
+                mountPropagation: Bidirectional
+            volumes:
+              - name: dev
+                hostPath:
+                  path: /dev
+      probes:
+        compute:
+          default:
+            liveness:
+              enabled: False
+            readiness:
+              enabled: False
+      security_context:
+        nova:
+          pod:
+            runAsUser: 42424
+          container:
+            nova_keys:
+              readOnlyRootFilesystem: true
+              runAsUser: 0
+      replicas:
+        api_metadata: 3
+        osapi: 3
+        conductor: 3
+        scheduler: 3
+        novncproxy: 1
+    conf:
+      nova:
+        DEFAULT:
+          debug: true
+        vnc:
+          novncproxy_base_url: http://192.168.101.36:30608/vnc_auto.html
+        neutron:
+          metadata_proxy_shared_secret: jLvPgsbTlfIVoK2aqOaL
+        libvirt:
+          virt_type: kvm
+          cpu_mode: host-passthrough
+    manifests:
+      deployment_placement: false
+      deployment_consoleauth: false
+      job_ks_placement_endpoints: false
+      job_ks_placement_service: false
+      job_ks_placement_user: false
+      pdb_placement: false
+      service_ingress_placement: false
+      service_placement: false
+  source:
+    type: local
+    location: /tmp/openstack-helm
+    subpath: nova
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: placement
+data:
+  chart_name: placement
+  release: placement
+  namespace: openstack
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-placement
+    resources:
+      - type: deployment
+      - type: job
+    native:
+      enabled: false
+  test:
+    enabled: false
+    timeout: 900
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            application: placement
+            component: db-init
+        - type: job
+          labels:
+            application: placement
+            component: db-sync
+        - type: job
+          labels:
+            application: placement
+            component: ks-user
+        - type: job
+          labels:
+            application: placement
+            component: ks-service
+        - type: job
+          labels:
+            application: placement
+            component: ks-endpoints
+        - type: job
+          labels:
+            application: placement
+            component: ks-user
+        - type: job
+          labels:
+            application: placement
+            component: ks-service
+        - type: job
+          labels:
+            application: placement
+            component: ks-endpoints
+  values:
+    network:
+      api:
+        node_port:
+          enabled: true
+    endpoints:
+      identity:
+        name: keystone
+        auth:
+          admin:
+            password: 24x8zPytDZH8wuSb 
+          placement:
+            username: placement
+            password: SF3L4KakWlbj1naAjwTz 
+      oslo_db:
+        auth:
+          admin:
+            password: hQrCbbmZQqGJbfedePek 
+          placement:
+            username: nova
+            password: 8yPTwBDaTaQzUvxVSAqT 
+      oslo_cache:
+        auth:
+          memcache_secret_key: 4hvV8Q8ZBrQbguej4jwj
+    labels:
+      api:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      job:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+    pod:
+      replicas:
+        api: 3
+    images:
+      pull_policy: Always
+      tags:
+        placement: docker.io/openstackhelm/placement:periodic_yoga-ubuntu_focal #master-ubuntu_bionic #yoga-ubuntu_focal 
+        ks_user: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        ks_service: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        ks_endpoints: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        db_init: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        db_drop: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        db_migrate: docker.itera.io/stackanetes/porthole-mysqlclient-utility:latest-ubuntu_bionic
+        placement_db_sync: docker.io/openstackhelm/placement:periodic_yoga-ubuntu_focal #master-ubuntu_bionic #yoga-ubuntu_focal 
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        image_repo_sync: docker.itera.io/docker:17.07.
+  source:
+    type: local
+    location: /tmp/openstack-helm
+    subpath: placement
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: neutron
+data:
+  chart_name: neutron
+  release: neutron
+  namespace: openstack
+  wait:
+    timeout: 2400
+    labels:
+      release_group: osh-neutron
+    resources:
+      - type: deployment
+      - type: daemonset
+      - type: job
+    native:
+      enabled: false
+  test:
+    enabled: False
+    timeout: 1200
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            application: neutron
+            component: db-init
+        - type: job
+          labels:
+            application: neutron
+            component: db-sync
+        - type: job
+          labels:
+            application: neutron
+            component: ks-user
+        - type: job
+          labels:
+            application: neutron
+            component: ks-service
+        - type: job
+          labels:
+            application: neutron
+            component: ks-endpoints
+  values:
+    images:
+      tags:
+        bootstrap: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        test: docker.itera.io/xrally/xrally-openstack:2.0.0
+        purge_test: docker.itera.io/openstackhelm/ospurge:latest
+        db_init: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        neutron_db_sync: docker.io/openstackhelm/neutron:yoga-ubuntu_focal
+        db_drop: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        rabbit_init: docker.itera.io/rabbitmq:3.7-management
+        ks_user: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        ks_service: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        ks_endpoints: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        neutron_server: docker.io/openstackhelm/neutron:yoga-ubuntu_focal
+        neutron_rpc_server: docker.io/openstackhelm/neutron:yoga-ubuntu_focal
+        neutron_dhcp: docker.io/openstackhelm/neutron:yoga-ubuntu_focal
+        neutron_metadata: docker.io/openstackhelm/neutron:yoga-ubuntu_focal
+        neutron_l3: docker.io/openstackhelm/neutron:yoga-ubuntu_focal
+        neutron_l2gw: docker.io/openstackhelm/neutron:yoga-ubuntu_focal
+        neutron_openvswitch_agent: docker.io/openstackhelm/neutron:yoga-ubuntu_focal
+        neutron_linuxbridge_agent: docker.io/openstackhelm/neutron:yoga-ubuntu_focal
+        neutron_sriov_agent: docker.itera.io/openstackhelm/neutron:latest-victoria-ubuntu_bionic-sriov-1804
+        neutron_sriov_agent_init: docker.itera.io/openstackhelm/neutron:latest-victoria-ubuntu_bionic-sriov-1804
+        neutron_bagpipe_bgp: docker.io/openstackhelm/neutron:yoga-ubuntu_focal
+        neutron_ironic_agent: docker.io/openstackhelm/neutron:yoga-ubuntu_focal
+        neutron_netns_cleanup_cron: docker.io/openstackhelm/neutron:yoga-ubuntu_focal
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        image_repo_sync: docker.itera.io/docker:17.07.0
+      pull_policy: "Always"
+    endpoints:
+      identity:
+        auth:
+          admin:
+            password: 24x8zPytDZH8wuSb
+          neutron:
+            password: fPSHADhcaRfhyWOepXqc
+          nova:
+            password: S2gQorl5qVc4FIWi8FbH
+          test:
+            password: RXVCsTdRLa6918L5mJ7d
+      oslo_db:
+        auth:
+          admin:
+            password: hQrCbbmZQqGJbfedePek
+          neutron:
+            password: X7Ruis5x0427N9VUDBRH
+      oslo_cache:
+        auth:
+          memcache_secret_key: 4hvV8Q8ZBrQbguej4jwj
+      oslo_messaging:
+        auth:
+          admin:
+            username: rabbitmq-admin
+            password: 5mOMtMEnkx4TxTwEMGqY
+          neutron:
+            username: neutron-rabbitmq-user
+            password: pXmwLSFFvNOi8DJgPeb4
+        statefulset:
+          replicas: 3
+          name: osh-rabbitmq-rabbitmq
+    pod:
+      replicas:
+        server: 3
+      probes:
+        dhcp_agent:
+          dhcp_agent:
+            readiness:
+              enabled: false
+            liveness:
+              enabled: false
+        l3_agent:
+          l3_agent:
+            readiness:
+              enabled: false
+            liveness:
+              enabled: false
+        metadata_agent:
+          metadata_agent:
+            readiness:
+              enabled: false
+            liveness:
+              enabled: false
+        ovs_agent:
+          ovs_agent:
+            liveness:
+              enabled: false
+        sriov_agent:
+          sriov_agent:
+            readiness:
+              enabled: false
+    labels:
+      agent:
+        dhcp:
+          node_selector_key: openstack-compute-node
+          node_selector_value: enabled
+        l3:
+          node_selector_key: openstack-compute-node
+          node_selector_value: enabled
+        metadata:
+          node_selector_key: openstack-compute-node
+          node_selector_value: enabled
+      job:
+        node_selector_key: openstack-compute-node
+        node_selector_value: enabled
+      netns_cleanup_cron:
+        node_selector_key: openstack-compute-node
+        node_selector_value: enabled
+      lb:
+        node_selector_key: linuxbridge
+        node_selector_value: enabled
+      # ovs is a special case, requiring a special
+      # label that can apply to both control hosts
+      # and compute hosts, until we get more sophisticated
+      # with our daemonset scheduling
+      ovs:
+        node_selector_key: openvswitch
+        node_selector_value: enabled
+      server:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      test:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+    network:
+      server:
+        node_port:
+          enabled: true
+      auto_bridge_add:
+        br-ex: ens3
+      interface:
+        tunnel: ens3
+    conf:
+      neutron:
+        DEFAULT:
+          #l3_ha: True
+          global_physnet_mtu: 9000
+          max_l3_agents_per_router: 3
+          l3_ha_network_type: vxlan
+          dhcp_agents_per_network: 3
+      metadata_agent:
+        DEFAULT:
+          metadata_proxy_shared_secret: jLvPgsbTlfIVoK2aqOaL
+      plugins:
+        ml2_conf:
+          ml2_type_vlan:
+            network_vlan_ranges: provider
+        openvswitch_agent:
+          agent:
+            tunnel_types: vxlan
+          ovs:
+            bridge_mappings: public:br-ex
+  source:
+    type: local
+    location: /tmp/openstack-helm
+    subpath: neutron
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: heat
+data:
+  chart_name: heat
+  release: heat
+  namespace: openstack
+  wait:
+    timeout: 2400
+    labels:
+      release_group: osh-heat
+    resources:
+      - type: deployment
+      - type: job
+    native:
+      enabled: false
+  test:
+    enabled: False
+    timeout: 1200
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            release_group: osh-heat
+        - type: pod
+          labels:
+            release_group: osh-heat
+            component: test
+  values:
+    network:
+      api:
+        node_port:
+          enabled: true 
+      cfn:
+        node_port:
+          enabled: true 
+    images:
+      tags:
+        test: docker.itera.io/xrally/xrally-openstack:2.0.0
+        bootstrap: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        db_init: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        heat_db_sync: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        db_drop: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        rabbit_init: docker.itera.io/rabbitmq:3.7-management
+        ks_user: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        ks_service: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        ks_endpoints: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        heat_api: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        heat_cfn: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        heat_cloudwatch: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        heat_engine: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        heat_engine_cleaner: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        heat_purge_deleted: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        image_repo_sync: docker.itera.io/docker:17.07.0
+    endpoints:
+      identity:
+        auth:
+          admin:
+            password: 24x8zPytDZH8wuSb
+          heat:
+            password: UM30jUu5oVyLSN83pyDl
+          heat_trustee:
+            password: taBmZdSd0ygg8QUthJRm
+          heat_stack_user:
+            password: kAd1jjS8bXEdk1NPZBz7
+          test:
+            password: Se6TksJNulWX0JZWNFA3
+      oslo_db:
+        auth:
+          admin:
+            password: hQrCbbmZQqGJbfedePek
+          heat:
+            password: g3xIjv3JR5nRFIxGjrd0
+      oslo_cache:
+        hosts:
+          default: heat-memcached
+      oslo_messaging:
+        auth:
+          admin:
+            username: rabbitmq-admin
+            password: 5mOMtMEnkx4TxTwEMGqY
+          heat:
+            username: heat-rabbitmq-user
+            password: tdB75UOZUWOTzbnKaHHb
+        statefulset:
+          replicas: 3
+          name: osh-rabbitmq-rabbitmq
+    labels:
+      api:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      cfn:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      cloudwatch:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      engine:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      job:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+    pod:
+      replicas:
+        api: 2
+        cfn: 2
+        cloudwatch: 2
+        engine: 2
+  source:
+    type: local
+    location: /tmp/openstack-helm
+    subpath: heat
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: horizon
+data:
+  chart_name: horizon
+  release: horizon
+  namespace: openstack
+  timeout: 3600
+  wait:
+    timeout: 3600
+    labels:
+      release_group: osh-horizon
+  test:
+    enabled: False
+  install:
+    no_hooks: false
+  upgrade:
+    no_hooks: false
+  values:
+    images:
+      tags:
+        db_init: docker.io/openstackhelm/heat:yoga-ubuntu_focal 
+        db_drop: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        #horizon_db_sync: docker.io/hemsonawane/horizon:yoga-ubuntu_focal
+        #horizon: docker.io/hemsonawane/horizon:yoga-ubuntu_focal
+        horizon_db_sync: docker.io/openstackhelm/horizon:yoga-ubuntu_focal
+        horizon: docker.io/openstackhelm/horizon:periodic_yoga-ubuntu_focal #yoga-ubuntu_focal
+      pull_policy: "Always"
+    network:
+      node_port:
+        enabled: true
+        port: 31000
+    endpoints:
+      oslo_db:
+        auth:
+          admin:
+            password: hQrCbbmZQqGJbfedePek
+    pod:
+      replicas:
+        server: 1
+    local_settings:
+      openstack_neutron_network:
+        enable_router: "True"
+        enable_quotas: "True"
+        enable_ipv6: "False"
+        enable_distributed_router: "False"
+        enable_ha_router: "True"
+        enable_lb: "True"
+        enable_firewall: "False"
+        enable_vpn: "True"
+        enable_fip_topology_check: "True"
+  source:
+    type: local
+    location: /tmp/openstack-helm
+    subpath: horizon
+    reference: master
+  dependencies:
+    - helm-toolkit
+
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: barbican
+data:
+  chart_name: barbican
+  release: barbican
+  namespace: openstack
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-barbican
+  test:
+    enabled: False 
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            release_group: osh-barbican
+        - type: pod
+          labels:
+            release_group: osh-barbican
+            component: test
+  values:
+    network:
+      api:
+        node_port:
+          enabled: true 
+    images:
+      tags:
+        bootstrap: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0 
+        scripted_test: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        db_init:  docker.io/openstackhelm/heat:yoga-ubuntu_focal 
+        barbican_db_sync: docker.io/openstackhelm/barbican:yoga-ubuntu_focal
+        db_drop: docker.io/openstackhelm/heat:yoga-ubuntu_focal 
+        ks_user: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        ks_service: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        ks_endpoints: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+        barbican_api: docker.io/openstackhelm/barbican:yoga-ubuntu_focal
+    endpoints:
+      identity:
+        auth:
+          admin:
+            password: 24x8zPytDZH8wuSb
+          barbican:
+            password: qciQicPIIgeWdw8lvH4X
+      oslo_db:
+        auth:
+          admin:
+            password: hQrCbbmZQqGJbfedePek
+          barbican:
+            password: iq5oRkZ7EhkPVdjOeLY3
+      oslo_cache:
+        auth:
+          memcache_secret_key: 4hvV8Q8ZBrQbguej4jwj 
+      oslo_messaging:
+        auth:
+          admin:
+            username: rabbitmq-admin
+            password: 5mOMtMEnkx4TxTwEMGqY
+          barbican:
+            username: barbican-rabbitmq-user
+            password: 96TcytySBslgQ3W2pZVa
+        statefulset:
+          replicas: 3
+          name: osh-rabbitmq-rabbitmq
+    labels:
+      api:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      job:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+    pod:
+      replicas:
+        api: 3
+  source:
+    type: local
+    location: /tmp/openstack-helm
+    subpath: barbican
+    reference: master
+  dependencies:
+    - helm-toolkit
+#---
+#schema: armada/Chart/v1
+#metadata:
+#  schema: metadata/Document/v1
+#  name: redis
+#data:
+#  chart_name: redis 
+#  release: redis
+#  namespace: openstack
+#  wait:
+#    timeout: 1800
+#    labels:
+#      release_group: osh-redis
+#    resources:
+#      - type: deployment 
+#    native:
+#      enabled: false
+#  install:
+#    no_hooks: False
+#  upgrade:
+#    no_hooks: False
+#    pre:
+#      delete:
+#        - type: job
+#          labels:
+#            release_group: osh-redis
+#  values:
+#    images:
+#      tags:
+#        redis: docker.io/redis:4.0.1
+#        helm_tests: docker.io/redislabs/redis-py:latest
+#        dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+#        image_repo_sync: docker.io/docker:17.07.0
+#    labels:
+#      redis:
+#        node_selector_key: openstack-control-plane
+#        node_selector_value: enabled
+#      job:
+#        node_selector_key: openstack-control-plane
+#        node_selector_value: enabled
+#      test:
+#        node_selector_key: openstack-control-plane
+#        node_selector_value: enabled
+#  source:
+#    type: local
+#    location: /tmp/openstack-helm-infra
+#    subpath: redis
+#    reference: master
+#  dependencies:
+#    - helm-toolkit
+#---
+#schema: armada/Chart/v1
+#metadata:
+#  schema: metadata/Document/v1
+#  name: octavia
+#data:
+#  chart_name: octavia
+#  release: octavia
+#  namespace: openstack
+#  wait:
+#    timeout: 1800
+#    labels:
+#      release_group: osh-octavia
+#  test:
+#    enabled: False
+#  install:
+#    no_hooks: False
+#  upgrade:
+#    no_hooks: False
+#    pre:
+#      delete:
+#        - type: job
+#          labels:
+#            release_group: osh-octavia
+#        - type: pod
+#          labels:
+#            release_group: osh-octavia
+#            component: test
+#  values:
+#    network:
+#      api:
+#        node_port:
+#          enabled: true
+#    images:
+#      tags:
+#        test: docker.itera.io/xrally/xrally-openstack:2.0.0
+#        bootstrap: docker.itera.io/openstackhelm/heat:yoga-ubuntu_focal
+#        db_init: docker.itera.io/openstackhelm/heat:yoga-ubuntu_focal
+#        octavia_db_sync: docker.itera.io/openstackhelm/octavia:yoga-ubuntu_focal
+#        db_drop: docker.itera.io/openstackhelm/heat:yoga-ubuntu_focal
+#        rabbit_init:  docker.itera.io/rabbitmq:3.7-management
+#        ks_user: docker.itera.io/openstackhelm/heat:yoga-ubuntu_focal
+#        ks_service: docker.itera.io/openstackhelm/heat:yoga-ubuntu_focal
+#        ks_endpoints: docker.itera.io/openstackhelm/heat:yoga-ubuntu_focal
+#        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+#        image_repo_sync: docker.itera.io/docker:17.07.0
+#        octavia_api: docker.itera.io/openstackhelm/octavia:yoga-ubuntu_focal
+#        octavia_worker: docker.itera.io/openstackhelm/octavia:yoga-ubuntu_focal
+#        octavia_housekeeping: docker.itera.io/openstackhelm/octavia:yoga-ubuntu_focal
+#        octavia_health_manager: docker.itera.io/openstackhelm/octavia:yoga-ubuntu_focal
+#        octavia_health_manager_init: docker.itera.io/openstackhelm/octavia:yoga-ubuntu_focal 
+#        openvswitch_vswitchd: docker.io/kolla/centos-source-openvswitch-vswitchd:rocky
+#    pod:
+#      replicas:
+#        api: 3
+#        worker: 3
+#        housekeeping: 3
+#        health_manager: 3
+#      mounts:
+#        octavia_api:
+#          octavia_api:
+#            volumeMounts:
+#              - name: octavia-certs
+#                mountPath: /etc/octavia/certs/private/cakey.pem
+#                subPath: cakey.pem
+#              - name: octavia-certs
+#                mountPath: /etc/octavia/certs/ca_01.pem
+#                subPath: ca_01.pem
+#              - name: octavia-certs
+#                mountPath: /etc/octavia/certs/client.pem
+#                subPath: client.pem
+#            volumes:
+#              - name: octavia-certs
+#                secret:
+#                  secretName: octavia-certs 
+#                  defaultMode: 0644
+#        octavia_worker:
+#          octavia_worker:
+#            volumeMounts:
+#              - name: octavia-certs
+#                mountPath: /etc/octavia/certs/private/cakey.pem
+#                subPath: cakey.pem
+#              - name: octavia-certs
+#                mountPath: /etc/octavia/certs/ca_01.pem
+#                subPath: ca_01.pem
+#              - name: octavia-certs
+#                mountPath: /etc/octavia/certs/client.pem
+#                subPath: client.pem
+#            volumes:
+#              - name: octavia-certs
+#                secret:
+#                  secretName: octavia-certs 
+#                  defaultMode: 0644
+#        octavia_housekeeping:
+#          octavia_housekeeping:
+#            volumeMounts:
+#              - name: octavia-certs
+#                mountPath: /etc/octavia/certs/private/cakey.pem
+#                subPath: cakey.pem
+#              - name: octavia-certs
+#                mountPath: /etc/octavia/certs/ca_01.pem
+#                subPath: ca_01.pem
+#              - name: octavia-certs
+#                mountPath: /etc/octavia/certs/client.pem
+#                subPath: client.pem
+#            volumes:
+#              - name: octavia-certs
+#                secret:
+#                  secretName: octavia-certs 
+#                  defaultMode: 0644
+#        octavia_health_manager:
+#          octavia_health_manager:
+#            volumeMounts:
+#              - name: octavia-certs
+#                mountPath: /etc/octavia/certs/private/cakey.pem
+#                subPath: cakey.pem
+#              - name: octavia-certs
+#                mountPath: /etc/octavia/certs/ca_01.pem
+#                subPath: ca_01.pem
+#              - name: octavia-certs
+#                mountPath: /etc/octavia/certs/client.pem
+#                subPath: client.pem
+#            volumes:
+#              - name: octavia-certs
+#                secret:
+#                  secretName: octavia-certs 
+#                  defaultMode: 0644
+#    conf:
+#      octavia:
+#        controller_worker:
+#          volume_driver: volume_cinder_driver
+#        cinder:
+#          volume_size: 2
+#          volume_type: ssd-enterprise
+#          volume_create_retry_interval: 5
+#          volume_create_timeout: 300
+#          volume_create_max_retries: 5
+#        controller_worker:
+#          amp_image_owner_id: 6187fb6961554fadbe72d503a9a0100b
+#          amp_secgroup_list: 8704c51d-59cd-4578-8a23-bf54690c0976
+#          amp_flavor_id: 200
+#          amp_boot_network_list: 8b71efdd-a1a2-476d-adc3-b478a57fdd9a
+#          amp_ssh_key_name: octavia
+#          volume_driver: volume_cinder_driver 
+#        health_manager:
+#          bind_port: 5555
+#          bind_ip: 0.0.0.0
+#          controller_ip_port_list: 10.21.0.2:5555,10.21.0.3:5555,10.21.0.4:5555
+#        house_keeping:
+#          spare_amphora_pool_size: 5
+#    endpoints:
+#      identity:
+#        auth:
+#          admin:
+#            password: 24x8zPytDZH8wuSb
+#          octavia:
+#            password: LuvBIuepeqxDrwQAv9Hc
+#      oslo_db:
+#        auth:
+#          admin:
+#            password: hQrCbbmZQqGJbfedePek
+#      oslo_cache:
+#        auth:
+#          memcache_secret_key: 4hvV8Q8ZBrQbguej4jwj 
+#      oslo_messaging:
+#        auth:
+#          admin:
+#            username: rabbitmq-admin
+#            password: 5mOMtMEnkx4TxTwEMGqY 
+#          octavia:
+#            username: octavia-rabbitmq-user
+#            password: XVgJDbCwjqCGEDQfrwha
+#        statefulset:
+#          replicas: 3
+#          name: osh-rabbitmq-rabbitmq
+#    labels:
+#      api:
+#        node_selector_key: octavia
+#        node_selector_value: enabled
+#      worker:
+#        node_selector_key: octavia
+#        node_selector_value: enabled
+#      housekeeping:
+#        node_selector_key: octavia
+#        node_selector_value: enabled
+#      health_manager:
+#        node_selector_key: octavia
+#        node_selector_value: enabled
+#      job:
+#        node_selector_key: octavia
+#        node_selector_value: enabled
+#  source:
+#    type: local
+#    location: /tmp/openstack-helm
+#    subpath: octavia
+#    reference: master
+#  dependencies:
+#    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: prometheus-openstack-exporter
+data:
+  chart_name: prometheus-openstack-exporter
+  release: prometheus-openstack-exporter
+  namespace: openstack
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-prometheus-openstack-exporter
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            release_group: osh-prometheus-openstack-exporter
+  values:
+    images:
+      tags:
+        prometheus_openstack_exporter: docker.itera.io/openstackhelm/prometheus-openstack-exporter:latest 
+#        #prometheus_openstack_exporter: docker.itera.io/openstackhelm/prometheus-openstack-exporter:ubuntu_bionic-20191017
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        image_repo_sync: docker.itera.io/docker:17.07.0
+        ks_user: docker.io/openstackhelm/heat:yoga-ubuntu_focal
+    endpoints:
+      identity:
+        auth:
+          admin:
+            password: 24x8zPytDZH8wuSb
+          user:
+            password: vUThQioNVROZ7SDFRdxv
+    labels:
+      node_selector_key: openstack-control-plane
+      node_selector_value: enabled
+  source:
+    type: local
+    location: /tmp/openstack-helm-infra
+    subpath: prometheus-openstack-exporter
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/ChartGroup/v1
+metadata:
+  schema: metadata/Document/v1
+  name: openstack-ingress-controller
+data:
+  description: "OpenStack Ingress Controller"
+  sequenced: False
+  chart_group:
+    - openstack-ingress-controller
+---
+schema: armada/ChartGroup/v1
+metadata:
+  schema: metadata/Document/v1
+  name: openstack-ceph-config
+data:
+  description: "OpenStack Ceph Config"
+  sequenced: True
+  chart_group:
+    - openstack-ceph-config
+---
+schema: armada/ChartGroup/v1
+metadata:
+  schema: metadata/Document/v1
+  name: deploy-mariadb
+data:
+  description: "Mariadb"
+  sequenced: True
+  chart_group:
+    - mariadb
+---
+schema: armada/ChartGroup/v1
+metadata:
+  schema: metadata/Document/v1
+  name: deploy-memcached
+data:
+  description: "Memcached"
+  sequenced: True
+  chart_group:
+    - memcached
+---
+schema: armada/ChartGroup/v1
+metadata:
+  schema: metadata/Document/v1
+  name: deploy-rabbitmq
+data:
+  description: "RabbitMQ"
+  sequenced: True
+  chart_group:
+    - rabbitmq
+---
+schema: armada/ChartGroup/v1
+metadata:
+  schema: metadata/Document/v1
+  name: openstack-keystone
+data:
+  description: "Deploy keystone"
+  sequenced: True
+  chart_group:
+    - keystone
+---
+schema: armada/ChartGroup/v1
+metadata:
+  schema: metadata/Document/v1
+  name: openstack-glance
+data:
+  description: "Deploy glance"
+  sequenced: True
+  chart_group:
+    - glance
+---
+schema: armada/ChartGroup/v1
+metadata:
+  schema: metadata/Document/v1
+  name: openstack-radosgw
+data:
+  description: "Deploy rados gateway"
+  sequenced: False
+  chart_group:
+    - radosgw-openstack
+---
+schema: armada/ChartGroup/v1
+metadata:
+  schema: metadata/Document/v1
+  name: openstack-cinder
+data:
+  description: "Deploy cinder"
+  sequenced: True
+  chart_group:
+    - cinder
+---
+schema: armada/ChartGroup/v1
+metadata:
+  schema: metadata/Document/v1
+  name: openstack-compute-kit
+data:
+  description: "Deploy nova and neutron, as well as supporting services"
+  sequenced: False
+  chart_group:
+    - libvirt
+    - openvswitch
+    - nova
+    - neutron
+    - placement
+---
+schema: armada/ChartGroup/v1
+metadata:
+  schema: metadata/Document/v1
+  name: openstack-heat
+data:
+  description: "Deploy heat"
+  sequenced: True
+  chart_group:
+    - heat
+---
+schema: armada/ChartGroup/v1
+metadata:
+  schema: metadata/Document/v1
+  name: openstack-services
+data:
+  description: "Openstack Services"
+  sequenced: True
+  chart_group:
+    - horizon
+---
+schema: armada/ChartGroup/v1
+metadata:
+  schema: metadata/Document/v1
+  name: openstack-barbican
+data:
+  description: "Deploy barbican"
+  sequenced: True
+  chart_group:
+    - barbican
+#---
+#schema: armada/ChartGroup/v1
+#metadata:
+#  schema: metadata/Document/v1
+#  name: openstack-redis
+#data:
+#  description: "Deploy octavia"
+#  sequenced: True
+#  chart_group:
+#    - redis
+#---
+#schema: armada/ChartGroup/v1
+#metadata:
+#  schema: metadata/Document/v1
+#  name: openstack-octavia
+#data:
+#  description: "Deploy octavia"
+#  sequenced: True
+#  chart_group:
+#    - octavia
+---
+schema: armada/ChartGroup/v1
+metadata:
+  schema: metadata/Document/v1
+  name: prometheus-openstack-exporter
+data:
+  description: 'Deploy Prometheus OpenStack exporter'
+  sequenced: False
+  chart_group:
+    - prometheus-openstack-exporter
+---
+schema: armada/Manifest/v1
+metadata:
+  schema: metadata/Document/v1
+  name: armada-manifest
+data:
+  release_prefix: osh
+  chart_groups:
+    - openstack-ingress-controller
+    - openstack-ceph-config
+    - deploy-mariadb
+    - deploy-memcached
+    - deploy-rabbitmq
+    - openstack-keystone
+    - openstack-radosgw
+    - openstack-glance
+    - openstack-cinder
+    - openstack-compute-kit
+    - openstack-heat
+    - openstack-services
+    - openstack-barbican
+#    - openstack-redis
+#    - openstack-octavia
+    - prometheus-openstack-exporter

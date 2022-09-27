@@ -1,0 +1,402 @@
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: helm-toolkit
+data:
+  chart_name: helm-toolkit
+  release: helm-toolkit
+  namespace: helm-toolkit
+  values: {}
+  source:
+    type: local
+    location: /tmp/openstack-helm-infra
+    subpath: helm-toolkit
+    reference: master
+  dependencies: []
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: ceph-ingress-controller
+data:
+  chart_name: ceph-ingress-controller
+  release: ceph-ingress-controller
+  namespace: ceph
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-ceph-ingress-controller
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            release_group: osh-ceph-ingress-controller
+  values:
+    images:
+      tags:
+        entrypoint: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        ingress: docker.itera.io/kubernetes-ingress-controller/nginx-ingress-controller:0.32.0
+        ingress_module_init: docker.itera.io/openstackhelm/neutron:latest-ussuri-ubuntu_bionic
+        ingress_routed_vip: docker.itera.io/openstackhelm/neutron:latest-ussuri-ubuntu_bionic
+        error_pages: docker.itera.io/google_containers/defaultbackend:1.4
+        keepalived: docker.itera.io/osixia/keepalived:1.4.5
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        image_repo_sync: docker.itera.io/docker:17.07.0
+    labels:
+      server:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      error_server:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+    pod:
+      replicas:
+        error_page: 2
+        ingress: 2
+  source:
+    type: local
+    location: /tmp/openstack-helm-infra
+    subpath: ingress
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: ceph-mon
+data:
+  chart_name: ceph-mon
+  release: ceph-mon
+  namespace: ceph
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-ceph-mon
+    resources:
+      - type: daemonset
+      - type: deployment
+      - type: job
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            release_group: osh-ceph-mon
+  values:
+    images:
+      tags:
+        ceph_bootstrap: docker.itera.io/ceph/daemon:ubuntu_bionic-20200521
+        ceph_config_helper: docker.itera.io/port/ceph-config-helper:ubuntu_bionic-20200521
+        ceph_mon: docker.itera.io/ceph/daemon:ubuntu_bionic-20200521
+        ceph_mon_check: docker.itera.io/port/ceph-config-helper:ubuntu_bionic-20200521
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        image_repo_sync: docker.itera.io/docker:17.07.0
+    endpoints:
+      identity:
+        namespace: openstack
+      object_store:
+        namespace: ceph
+      ceph_mon:
+        namespace: ceph
+    network:
+      public: 192.168.101.0/24
+      cluster: 192.168.101.0/24
+    deployment:
+      storage_secrets: true
+      ceph: true
+      rbd_provisioner: true
+      cephfs_provisioner: true
+      client_secrets: false
+      rgw_keystone_user_and_endpoints: false
+    bootstrap:
+      enabled: true
+    conf:
+      ceph:
+        global:
+          fsid: f201d4af-9888-4f50-8f1c-ef8e8fcd9c6e
+      rgw_ks:
+        enabled: true
+      pool:
+        crush:
+          tunables: null
+        target:
+          # NOTE(portdirect): 5 nodes, with one osd per node
+          osd: 3
+          pg_per_osd: 100
+      storage:
+        osd:
+          - data:
+              type: bluestore
+              location: /dev/sdb
+  source:
+    type: local
+    location: /tmp/openstack-helm-infra
+    subpath: ceph-mon
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: ceph-osd
+data:
+  chart_name: ceph-osd
+  release: ceph-osd
+  namespace: ceph
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-ceph-osd
+    resources:
+      - type: daemonset
+    native:
+      enabled: false
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            release_group: osh-ceph-osd
+  values:
+    images:
+      tags:
+        ceph_osd: docker.itera.io/ceph/daemon:ubuntu_bionic-20200521
+        ceph_bootstrap: docker.itera.io/ceph/daemon:ubuntu_bionic-20200521
+        ceph_config_helper: docker.itera.io/port/ceph-config-helper:ubuntu_bionic-20200521
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        image_repo_sync: docker.itera.io/docker:17.07.0
+    endpoints:
+      identity:
+        namespace: openstack
+      object_store:
+        namespace: ceph
+      ceph_mon:
+        namespace: ceph
+    network:
+      public: 192.168.101.0/24
+      cluster: 192.168.101.0/24
+    deployment:
+      storage_secrets: true
+      ceph: true
+      rbd_provisioner: true
+      cephfs_provisioner: true
+      client_secrets: false
+      rgw_keystone_user_and_endpoints: false
+    bootstrap:
+      enabled: true
+    conf:
+      ceph:
+        global:
+          fsid: f201d4af-9888-4f50-8f1c-ef8e8fcd9c6e
+      rgw_ks:
+        enabled: true
+      pool:
+        crush:
+          tunables: null
+        target:
+          # NOTE(portdirect): 5 nodes, with one osd per node
+          osd: 3
+          pg_per_osd: 100
+      storage:
+        osd:
+          - data:
+              type: bluestore
+              location: /dev/sdb
+  source:
+    type: local
+    location: /tmp/openstack-helm-infra
+    subpath: ceph-osd
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: ceph-client
+data:
+  chart_name: ceph-client
+  release: ceph-client
+  namespace: ceph
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-ceph-client
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            release_group: osh-ceph-client
+  values:
+    images:
+      tags:
+        ceph_bootstrap: docker.itera.io/ceph/daemon:ubuntu_bionic-20200521
+        ceph_config_helper: docker.itera.io/port/ceph-config-helper:ubuntu_bionic-20200521
+        ceph_mds: docker.itera.io/ceph/daemon:ubuntu_bionic-20200521
+        ceph_mgr: docker.itera.io/ceph/daemon:ubuntu_bionic-20200521
+        ceph_rbd_pool: docker.itera.io/port/ceph-config-helper:ubuntu_bionic-20200521
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        image_repo_sync: docker.itera.io/docker:17.07.0
+    endpoints:
+      identity:
+        namespace: openstack
+      object_store:
+        namespace: ceph
+      ceph_mon:
+        namespace: ceph
+    network:
+      public: 192.168.101.0/24
+      cluster: 192.168.101.0/24
+    deployment:
+      storage_secrets: true
+      ceph: true
+      rbd_provisioner: true
+      cephfs_provisioner: true
+      client_secrets: false
+      rgw_keystone_user_and_endpoints: false
+    bootstrap:
+      enabled: true
+    conf:
+      ceph:
+        global:
+          fsid: f201d4af-9888-4f50-8f1c-ef8e8fcd9c6e
+      rgw_ks:
+        enabled: true
+      pool:
+        crush:
+          tunables: null
+        target:
+          # NOTE(portdirect): 5 nodes, with one osd per node
+          osd: 3
+          pg_per_osd: 100
+      storage:
+        osd:
+          - data:
+              type: bluestore
+              location: /dev/sdb
+  source:
+    type: local
+    location: /tmp/openstack-helm-infra
+    subpath: ceph-client
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: ceph-provisioners
+data:
+  chart_name: ceph-provisioners
+  release: ceph-provisioners
+  namespace: ceph
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-ceph-provisioners
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            release_group: osh-ceph-provisioners
+  values:
+    images:
+      tags:
+        ceph_bootstrap: docker.itera.io/ceph/daemon:ubuntu_bionic-20200521
+        ceph_cephfs_provisioner: docker.itera.io/external_storage/cephfs-provisioner:ubuntu_bionic-20200521
+        ceph_config_helper: docker.itera.io/port/ceph-config-helper:ubuntu_bionic-20200521
+        ceph_rbd_provisioner: docker.itera.io/external_storage/rbd-provisioner:ubuntu_bionic-20200521
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v0.3.1
+        image_repo_sync: docker.itera.io/docker:17.07.0
+    endpoints:
+      identity:
+        namespace: openstack
+      object_store:
+        namespace: ceph
+      ceph_mon:
+        namespace: ceph
+    network:
+      public: 192.168.101.0/24
+      cluster: 192.168.101.0/24
+    deployment:
+      storage_secrets: true
+      ceph: true
+      rbd_provisioner: true
+      cephfs_provisioner: true
+      client_secrets: false
+      rgw_keystone_user_and_endpoints: false
+    storageclass:
+      cephfs:
+        provision_storage_class: false
+    manifests:
+      deployment_cephfs_provisioner: false
+      job_cephfs_client_key: false
+    bootstrap:
+      enabled: true
+    conf:
+      ceph:
+        global:
+          fsid: f201d4af-9888-4f50-8f1c-ef8e8fcd9c6e
+      pool:
+        crush:
+          tunables: null
+        target:
+          # NOTE(portdirect): 5 nodes, with one osd per node
+          osd: 3
+          pg_per_osd: 100
+      storage:
+        osd:
+          - data:
+              type: bluestore
+              location: /dev/sdb
+  source:
+    type: local
+    location: /tmp/openstack-helm-infra
+    subpath: ceph-provisioners
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/ChartGroup/v1
+metadata:
+  schema: metadata/Document/v1
+  name: ceph-storage
+data:
+  description: "Ceph Storage"
+  sequenced: True
+  chart_group:
+    - ceph-ingress-controller
+    - ceph-mon
+    - ceph-osd
+    - ceph-client
+    - ceph-provisioners
+---
+schema: armada/Manifest/v1
+metadata:
+  schema: metadata/Document/v1
+  name: armada-manifest
+data:
+  release_prefix: osh
+  chart_groups:
+    - ceph-storage

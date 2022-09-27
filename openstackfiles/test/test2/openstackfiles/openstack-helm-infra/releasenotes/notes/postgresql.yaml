@@ -1,0 +1,15 @@
+---
+postgresql:
+  - 0.1.0 Initial Chart
+  - 0.1.1 Change helm-toolkit dependency version to ">= 0.1.0"
+  - 0.1.2 adding archiving to postgres
+  - 0.1.3 Use explicit entrypoint for prometheus exporter
+  - 0.1.4 Allow probe tweaking
+  - 0.1.5 Optimize restart behavior
+  - 0.1.6 Revert "Add default reject rule ..."
+  - 0.1.7 postgres archive cleanup script
+  - 0.1.8 Add tls to Postgresql
+  - 0.1.9 Use full image ref for docker official images
+  - 0.1.10 Helm 3 - Fix Job labels
+  - 0.1.11 Update htk requirements
+...

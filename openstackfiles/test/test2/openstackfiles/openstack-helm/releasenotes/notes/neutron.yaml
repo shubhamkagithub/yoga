@@ -1,0 +1,27 @@
+---
+neutron:
+  - 0.1.0 Initial Chart
+  - 0.1.1 Change helm-toolkit dependency version to ">= 0.1.0"
+  - 0.1.2 fixes tls issue
+  - 0.1.3 Update neutron to use Nginx apparmor profile
+  - 0.1.4 Pass ovs agent config to dhcp agent
+  - 0.1.5 Add missing flags to nginx container in neutron chart
+  - 0.1.6 Use HostToContainer mountPropagation
+  - 0.1.7 Change Issuer to ClusterIssuer
+  - 0.1.8 Revert Change Issuer to ClusterIssuer
+  - 0.1.9 Update ovs agent to support host/label overrides
+  - 0.1.10 Change Issuer to ClusterIssuer
+  - 0.1.11 Added the helm.sh/hook, helm.sh/hook-weight annotations
+  - 0.1.12 Removed "name" parameter from Rally tests
+  - 0.2.0 Remove support for releases before T
+  - 0.2.1 Adding rabbitmq TLS logic
+  - 0.2.2 Use policies in yaml format
+  - 0.2.3 Mount rabbitmq TLS secret
+  - 0.2.4 Add Ussuri release support
+  - 0.2.5 Use rootwrap daemon
+  - 0.2.6 Fix neutron agent-init script
+  - 0.2.7 Made dnsmasq.conf overridable in configmap-bin
+  - 0.2.8 Add Victoria and Wallaby releases support
+  - 0.2.9 Add option to disable helm.sh/hook annotations
+  - 0.2.10 Update htk requirements repo
+...

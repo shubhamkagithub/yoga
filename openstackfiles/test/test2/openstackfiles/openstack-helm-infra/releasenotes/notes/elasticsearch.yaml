@@ -1,0 +1,26 @@
+---
+elasticsearch:
+  - 0.1.0 Initial Chart
+  - 0.1.1 Change helm-toolkit dependency version to ">= 0.1.0"
+  - 0.1.2 Update to 7.6.2 image
+  - 0.1.3 Add elasticsearch snapshot policy template for SLM
+  - 0.1.4 Add elasticsearch ILM functionality
+  - 0.1.5 Make templates job more generic
+  - 0.1.6 Fix elasticsearch-master rendering error
+  - 0.1.7 Pin Java options to specific versions
+  - 0.1.8 Disable Curator in Gate & Chart Defaults
+  - 0.2.0 Add more S3 configuration options
+  - 0.2.1 Make templates job more robust & allow overrides
+  - 0.2.2 Update the ES curator config to {}
+  - 0.2.3 Add configurable backoffLimit to templates job
+  - 0.2.4 Update helm-test script
+  - 0.2.5 Enable TLS with Kibana
+  - 0.2.6 Enable TLS path between nodes in cluster and TLS path between ceph-rgw
+  - 0.2.7 Get connection option from values.yaml
+  - 0.2.8 Use full image ref for docker official images
+  - 0.2.9 Removed repo verification check from helm-test
+  - 0.2.10 Enable TLS path between Prometheus-elasticsearch-exporter and Elasticsearch
+  - 0.2.11 Enable TLS path between Curator and Elasticsearch
+  - 0.2.12 Helm 3 - Fix Job labels
+  - 0.2.13 Update htk requirements
+...

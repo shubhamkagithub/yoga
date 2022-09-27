@@ -1,0 +1,33 @@
+---
+ceph-client:
+  - 0.1.0 Initial Chart
+  - 0.1.1 Change helm-toolkit dependency version to ">= 0.1.0"
+  - 0.1.2 fix the logic to disable the autoscaler on pools
+  - 0.1.3 Run as ceph user and disallow privilege escalation
+  - 0.1.4 Improvements for ceph-client helm tests
+  - 0.1.5 Fix Helm test check_pgs() check for inactive PGs
+  - 0.1.6 Uplift from Nautilus to Octopus release
+  - 0.1.7 Don't wait for premerge PGs in the rbd pool job
+  - 0.1.8 enhance logic to enable the autoscaler for Octopus
+  - 0.1.9 Revert "[ceph-client] enhance logic to enable the autoscaler for Octopus"
+  - 0.1.10 Separate pool quotas from pg_num calculations
+  - 0.1.11 enhance logic to enable and disable the autoscaler
+  - 0.1.12 Disable autoscaling before pools are created
+  - 0.1.13 Fix ceph-client helm test
+  - 0.1.14 Allow Ceph RBD pool job to leave failed pods
+  - 0.1.15 Make ceph-client helm test more PG specific
+  - 0.1.16 Make Ceph pool init job consistent with helm test
+  - 0.1.17 Add pool rename support for Ceph pools
+  - 0.1.18 Add pool delete support for Ceph pools
+  - 0.1.19 Use full image ref for docker official images
+  - 0.1.20 Export crash dumps when Ceph daemons crash
+  - 0.1.21 Fix Ceph checkDNS script
+  - 0.1.22 Set pg_num_min in all cases
+  - 0.1.23 Helm 3 - Fix Job labels
+  - 0.1.24 Performance optimizations for the ceph-rbd-pool job
+  - 0.1.25 Update htk requirements
+  - 0.1.26 Fix ceph-rbd-pool deletion race
+  - 0.1.27 Update ceph_mon config to ips from fqdn
+  - 0.1.28 Fix ceph.conf update job labels, rendering
+  - 0.1.29 Consolidate mon_host discovery
+...

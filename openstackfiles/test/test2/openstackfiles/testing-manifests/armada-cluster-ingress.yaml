@@ -1,0 +1,91 @@
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: helm-toolkit
+data:
+  chart_name: helm-toolkit
+  release: helm-toolkit
+  namespace: helm-toolkit
+  values: {}
+  source:
+    type: local
+    location: /tmp/openstack-helm-infra
+    subpath: helm-toolkit
+    reference: master
+  dependencies: []
+---
+schema: armada/Chart/v1
+metadata:
+  schema: metadata/Document/v1
+  name: ingress-kube-system
+data:
+  chart_name: ingress-kube-system
+  release: ingress-kube-system
+  namespace: kube-system
+  wait:
+    timeout: 1800
+    labels:
+      release_group: osh-ingress-kube-system
+  install:
+    no_hooks: False
+  upgrade:
+    no_hooks: False
+    pre:
+      delete:
+        - type: job
+          labels:
+            release_group: osh-ingress-kube-system
+  values:
+    images:
+      tags:
+        entrypoint: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        ingress: docker.itera.io/kubernetes-ingress-controller/nginx-ingress-controller:0.32.0
+        ingress_module_init: docker.itera.io/openstackhelm/neutron:latest-ussuri-ubuntu_bionic
+        ingress_routed_vip: docker.itera.io/openstackhelm/neutron:latest-ussuri-ubuntu_bionic
+        error_pages: docker.itera.io/google_containers/defaultbackend:1.4
+        keepalived: docker.itera.io/osixia/keepalived:1.4.5
+        dep_check: docker.itera.io/stackanetes/kubernetes-entrypoint:v1.0.0
+        image_repo_sync: docker.itera.io/docker:17.07.0
+    release_uuid: 8ca1081d-f2b1-4494-aa0b-b14496e132f8
+    labels:
+      server:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+      error_server:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+    pod:
+      replicas:
+        error_page: 2
+    deployment:
+      mode: cluster
+      type: DaemonSet
+    network:
+      host_namespace: true
+  source:
+    type: local
+    location: /tmp/openstack-helm-infra
+    subpath: ingress
+    reference: master
+  dependencies:
+    - helm-toolkit
+---
+schema: armada/ChartGroup/v1
+metadata:
+  schema: metadata/Document/v1
+  name: cluster-ingress-controller
+data:
+  description: "Cluster Ingress Controller"
+  sequenced: False
+  chart_group:
+    - ingress-kube-system
+---
+schema: armada/Manifest/v1
+metadata:
+  schema: metadata/Document/v1
+  name: armada-manifest
+data:
+  release_prefix: osh
+  chart_groups:
+    - cluster-ingress-controller

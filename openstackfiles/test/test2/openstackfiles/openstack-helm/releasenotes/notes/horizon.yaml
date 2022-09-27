@@ -1,0 +1,29 @@
+---
+horizon:
+  - 0.1.0 Initial Chart
+  - 0.1.1 Change helm-toolkit dependency version to ">= 0.1.0"
+  - 0.1.2 To avoid wrong version check for mysqlclient
+  - 0.1.3 Modify Password validator related settings in Horizon
+  - 0.1.4 Change Issuer to ClusterIssuer
+  - 0.1.5 Revert - Change Issuer to ClusterIssuer
+  - 0.1.6 Change Issuer to ClusterIssuer
+  - 0.1.7 Update glance default policy values
+  - 0.1.8 Implement "CSRF_COOKIE_HTTPONLY" option support in horizon
+  - 0.2.0 Remove support for releases before T
+  - 0.2.1 Make python script PEP8 compliant
+  - 0.2.2 Use policies in yaml format
+  - 0.2.3 Add openstack_enable_password_retrieve variable in value
+  - 0.2.4 Fix OPENSTACK_KEYSTONE_MULTIDOMAIN_SUPPORT value
+  - 0.2.5 Add Ussuri release support
+  - 0.2.6 Add Victoria and Wallaby releases support
+  - 0.2.7 Fix OPENSTACK_ENABLE_PASSWORD_RETRIEVE value
+  - 0.2.8 Add default polices
+  - 0.2.9 Removed default policy in chart in favor of default policy in code
+  - 0.2.10 Helm 3 - Fix Job Labels
+  - 0.2.11 Update htk requirements repo
+  - 0.2.12 Support both json and yaml RBAC Policy Format
+  - 0.2.13 Add container infra api version in values
+  - 0.2.14 Add OPENSTACK_ENDPOINT_TYPE value
+  - 0.2.15 Add local_settings.d
+  - 0.2.16 Fix container-infra value
+...

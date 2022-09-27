@@ -1,0 +1,23 @@
+---
+glance:
+  - 0.1.0 Initial Chart
+  - 0.1.1 Change helm-toolkit dependency to >= 0.1.0
+  - 0.1.2 Change issuer to clusterissuer
+  - 0.1.3 Revert - Change issuer to clusterissuer
+  - 0.1.4 Update RBAC apiVersion from /v1beta1 to /v1
+  - 0.1.5 Change Issuer to ClusterIssuer
+  - 0.1.6 Update glance default policy values
+  - 0.1.7 Update storage init script with cacert
+  - 0.1.8 Update glance default policy values
+  - 0.2.0 Remove support for releases before T
+  - 0.2.1 Fix the ceph pool creations for openstack services
+  - 0.2.2 Adding rabbitmq TLS logic
+  - 0.2.3 Use policies in yaml format
+  - 0.2.4 Mount rabbitmq TLS secret
+  - 0.2.5 Add Ussuri release support
+  - 0.2.6 Add Victoria and Wallaby releases support
+  - 0.2.7 Added helm.sh/hook for the jobs
+  - 0.2.8 Helm 3 - Fix Job Labels
+  - 0.2.9 Helm 3 - Fix More Job Labels
+  - 0.2.10 Update htk requirements repo
+...

@@ -1,0 +1,15 @@
+---
+prometheus:
+  - 0.1.0 Initial Chart
+  - 0.1.1 Change helm-toolkit dependency version to ">= 0.1.0"
+  - 0.1.2 Add configurable readiness/liveness Probes
+  - 0.1.3 Revert "Render Rules as Templates"
+  - 0.1.4 Fix spacing inconsistencies with flags
+  - 0.1.5 Fix spacing inconsistencies with flags
+  - 0.1.6 Upgrade version to v2.25 fix/remove deprecated flags
+  - 0.1.7 Enable TLS for Prometheus
+  - 0.1.8 Change readiness probe from /status to /-/ready
+  - 0.1.9 Retrieve backend port name from values.yaml
+  - 0.1.10 Use full image ref for docker official images
+  - 0.1.11 Update htk requirements
+...

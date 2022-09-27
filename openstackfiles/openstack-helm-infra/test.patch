@@ -1,0 +1,159 @@
+From 25d2b06c16241982137bdd9facaa0c25686ec4fe Mon Sep 17 00:00:00 2001
+From: Chris Wedgwood <cw@f00f.org>
+Date: Sun, 4 Oct 2020 06:25:49 +0000
+Subject: [PATCH] [kube-state-metrics] Update to make current
+
+Update image to a version appropriate for current Kubernetes versions,
+adjust RBAC appropriately.
+
+Change-Id: I6c7835cb18737f98e37a433bde8fd232d6f5479e
+---
+ prometheus-kube-state-metrics/Chart.yaml      |  2 +-
+ .../templates/bin/_kube-state-metrics.sh.tpl  | 18 -------
+ .../templates/configmap-bin.yaml              |  2 -
+ .../templates/deployment.yaml                 | 51 +------------------
+ prometheus-kube-state-metrics/values.yaml     |  2 +-
+ 5 files changed, 4 insertions(+), 71 deletions(-)
+ delete mode 100644 prometheus-kube-state-metrics/templates/bin/_kube-state-metrics.sh.tpl
+
+diff --git a/prometheus-kube-state-metrics/Chart.yaml b/prometheus-kube-state-metrics/Chart.yaml
+index 3ccf669ac..5ce3afb97 100644
+--- a/prometheus-kube-state-metrics/Chart.yaml
++++ b/prometheus-kube-state-metrics/Chart.yaml
+@@ -15,7 +15,7 @@ apiVersion: v1
+ appVersion: v1.3.1
+ description: OpenStack-Helm Kube-State-Metrics for Prometheus
+ name: prometheus-kube-state-metrics
+-version: 0.1.1
++version: 0.1.2
+ home: https://github.com/kubernetes/kube-state-metrics
+ sources:
+   - https://github.com/kubernetes/kube-state-metrics
+diff --git a/prometheus-kube-state-metrics/templates/bin/_kube-state-metrics.sh.tpl b/prometheus-kube-state-metrics/templates/bin/_kube-state-metrics.sh.tpl
+deleted file mode 100644
+index 0d8552c2c..000000000
+--- a/prometheus-kube-state-metrics/templates/bin/_kube-state-metrics.sh.tpl
++++ /dev/null
+@@ -1,18 +0,0 @@
+-#!/bin/bash
+-{{/*
+-Licensed under the Apache License, Version 2.0 (the "License");
+-you may not use this file except in compliance with the License.
+-You may obtain a copy of the License at
+-
+-   http://www.apache.org/licenses/LICENSE-2.0
+-
+-Unless required by applicable law or agreed to in writing, software
+-distributed under the License is distributed on an "AS IS" BASIS,
+-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-See the License for the specific language governing permissions and
+-limitations under the License.
+-*/}}
+-
+-set -ex
+-
+-exec kube-state-metrics --port=8080 --telemetry-port=8081
+diff --git a/prometheus-kube-state-metrics/templates/configmap-bin.yaml b/prometheus-kube-state-metrics/templates/configmap-bin.yaml
+index 74c5a53d0..9cdd5bbcf 100644
+--- a/prometheus-kube-state-metrics/templates/configmap-bin.yaml
++++ b/prometheus-kube-state-metrics/templates/configmap-bin.yaml
+@@ -20,8 +20,6 @@ kind: ConfigMap
+ metadata:
+   name: kube-state-metrics-bin
+ data:
+-  kube-state-metrics.sh: |
+-{{ tuple "bin/_kube-state-metrics.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+   image-repo-sync.sh: |
+ {{- include "helm-toolkit.scripts.image_repo_sync" . | indent 4 }}
+ {{- end }}
+diff --git a/prometheus-kube-state-metrics/templates/deployment.yaml b/prometheus-kube-state-metrics/templates/deployment.yaml
+index b4101a3c5..344fade6e 100644
+--- a/prometheus-kube-state-metrics/templates/deployment.yaml
++++ b/prometheus-kube-state-metrics/templates/deployment.yaml
+@@ -30,46 +30,9 @@ metadata:
+   name: {{ $serviceAccountName }}
+ rules:
+   - apiGroups:
+-      - ""
++      - "*"
+     resources:
+-      - configmaps
+-      - secrets
+-      - nodes
+-      - pods
+-      - services
+-      - resourcequotas
+-      - replicationcontrollers
+-      - limitranges
+-      - persistentvolumeclaims
+-      - persistentvolumes
+-      - namespaces
+-      - endpoints
+-    verbs:
+-      - list
+-      - watch
+-  - apiGroups:
+-      - apps
+-    resources:
+-      - statefulsets
+-      - daemonsets
+-      - deployments
+-      - replicasets
+-    verbs:
+-      - get
+-      - list
+-      - watch
+-  - apiGroups:
+-      - batch
+-    resources:
+-      - cronjobs
+-      - jobs
+-    verbs:
+-      - list
+-      - watch
+-  - apiGroups:
+-      - autoscaling
+-    resources:
+-      - horizontalpodautoscalers
++      - "*"
+     verbs:
+       - list
+       - watch
+@@ -124,8 +87,6 @@ spec:
+ {{ tuple $envAll "kube_state_metrics" | include "helm-toolkit.snippets.image" | indent 10 }}
+ {{ tuple $envAll $envAll.Values.pod.resources.kube_state_metrics | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+ {{ dict "envAll" $envAll "application" "exporter" "container" "kube_state_metrics" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+-          command:
+-            - /tmp/kube-state-metrics.sh
+           ports:
+             - name: metrics
+               containerPort: {{ tuple "kube_state_metrics" "internal" "http" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+@@ -133,15 +94,7 @@ spec:
+           volumeMounts:
+             - name: pod-tmp
+               mountPath: /tmp
+-            - name: kube-state-metrics-bin
+-              mountPath: /tmp/kube-state-metrics.sh
+-              subPath: kube-state-metrics.sh
+-              readOnly: true
+       volumes:
+         - name: pod-tmp
+           emptyDir: {}
+-        - name: kube-state-metrics-bin
+-          configMap:
+-            name: kube-state-metrics-bin
+-            defaultMode: 0555
+ {{- end }}
+diff --git a/prometheus-kube-state-metrics/values.yaml b/prometheus-kube-state-metrics/values.yaml
+index c9be4cc4f..c0d6da689 100644
+--- a/prometheus-kube-state-metrics/values.yaml
++++ b/prometheus-kube-state-metrics/values.yaml
+@@ -17,7 +17,7 @@
+ ---
+ images:
+   tags:
+-    kube_state_metrics: docker.io/bitnami/kube-state-metrics:1.3.1
++    kube_state_metrics: quay.io/coreos/kube-state-metrics:v2.0.0-alpha
+     dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+     image_repo_sync: docker.io/docker:17.07.0
+   pull_policy: IfNotPresent

@@ -1,0 +1,21 @@
+---
+ceph-rgw:
+  - 0.1.0 Initial Chart
+  - 0.1.1 Change helm-toolkit dependency version to ">= 0.1.0"
+  - 0.1.2 Uplift from Nautilus to Octopus release
+  - 0.1.3 update rbac api version
+  - 0.1.4 Rgw placement target support
+  - 0.1.5 Add tls support
+  - 0.1.6 Update tls override options
+  - 0.1.7 Use ca cert for helm tests
+  - 0.1.8 Add placement target delete support to RGW
+  - 0.1.9 Use full image ref for docker official images
+  - 0.1.10 Fix a bug in placement target deletion for new targets
+  - 0.1.11 Change s3 auth order to use local before external
+  - 0.1.12 Export crash dumps when Ceph daemons crash
+  - 0.1.13 Add configmap hash for keystone rgw
+  - 0.1.14 Disable crash dumps for rgw
+  - 0.1.15 Correct rgw placement target functions
+  - 0.1.16 Helm 3 - Fix Job labels
+  - 0.1.17 Update htk requirements
+...
