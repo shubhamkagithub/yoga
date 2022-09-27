@@ -1,0 +1,4 @@
+ipip: False
+ipip_mode: Never
+calico_felix_prometheusmetricsenabled: true
+calico_mtu: 8950

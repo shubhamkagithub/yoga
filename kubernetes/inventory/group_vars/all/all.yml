@@ -1,0 +1,3 @@
+kubeconfig_localhost: true
+populate_inventory_to_hosts_file: false
+force_certificate_regeneration: true
